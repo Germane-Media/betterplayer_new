@@ -66,6 +66,12 @@ import java.util.*
 import kotlin.math.max
 import kotlin.math.min
 
+import android.util.Log
+import io.datazoom.sdk.Datazoom
+import io.datazoom.sdk.DzAdapter
+import io.datazoom.sdk.exoplayer.createContext
+
+
 internal class BetterPlayer(
     context: Context,
     private val eventChannel: EventChannel,
@@ -93,6 +99,9 @@ internal class BetterPlayer(
         customDefaultLoadControl ?: CustomDefaultLoadControl()
     private var lastSendBufferedPosition = 0L
 
+    private var datazoomAdapter: DzAdapter? = null
+
+
     init {
         val loadBuilder = DefaultLoadControl.Builder()
         loadBuilder.setBufferDurationsMs(
@@ -106,6 +115,18 @@ internal class BetterPlayer(
             .setTrackSelector(trackSelector)
             .setLoadControl(loadControl)
             .build()
+
+        // Attach Datazoom to ExoPlayer
+        try {
+            // createContext is provided by the Datazoom ExoPlayer integration
+            // it returns a DzAdapter that represents this player context
+            datazoomAdapter = Datazoom.createContext(exoPlayer)
+            Log.d("BetterPlayer", "Datazoom context created for ExoPlayer")
+        } catch (e: Exception) {
+            // don't crash the app if Datazoom isn't available for some reason
+            Log.w("BetterPlayer", "Failed to create Datazoom context", e)
+        }
+
         workManager = WorkManager.getInstance(context)
         workerObserverMap = HashMap()
         setupVideoPlayer(eventChannel, textureEntry, result)
@@ -748,6 +769,18 @@ internal class BetterPlayer(
         eventChannel.setStreamHandler(null)
         surface?.release()
         exoPlayer?.release()
+        // remove Datazoom context when player is destroyed
+        datazoomAdapter?.let { adapter ->
+            try {
+                Datazoom.removeContext(adapter)
+                Log.d("BetterPlayer", "Datazoom context removed")
+            } catch (e: Exception) {
+                Log.w("BetterPlayer", "Failed to remove Datazoom context", e)
+            } finally {
+                datazoomAdapter = null
+            }
+        }
+
     }
 
     override fun equals(other: Any?): Boolean {

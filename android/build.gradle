@@ -66,4 +66,7 @@ dependencies {
     // Flutter dependencies
     implementation project(':wakelock_plus') // Ensure this project exists
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlinVersion"
+
+    
+
 }
